@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Bonnen">
+<title>Bonnen Tracker v14</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+:root { --bg:#f5f0e8; --sur:#fffdf7; --ink:#1a1612; --mut:#7a7066; --red:#c8401a; --grn:#2a6b4a; --brd:#d4cfc5; }
+body { font-family:'Courier New',monospace; background:var(--bg); color:var(--ink); min-height:100vh; padding-bottom:40px; }
+header { background:var(--ink); color:var(--bg); padding:52px 20px 18px; border-bottom:3px solid var(--red); display:flex; align-items:flex-end; justify-content:space-between; }
+header h1 { font-family:Georgia,serif; font-size:1.6rem; font-weight:300; }
+header h1 .a { color:var(--red); font-style:italic; }
+header h1 .v { font-size:0.7rem; opacity:0.5; font-style:normal; }
+.ml { font-size:0.63rem; letter-spacing:0.1em; text-transform:uppercase; color:#9a9590; margin-top:4px; }
+.wbar { background:#2a2520; padding:10px 16px; display:flex; align-items:center; gap:8px; border-bottom:1px solid #3a3530; }
+.wbar label { font-size:0.6rem; letter-spacing:0.1em; text-transform:uppercase; color:#9a9590; white-space:nowrap; }
+.wbar input { flex:1; background:#1a1612; border:1px solid #3a3530; border-radius:3px; padding:7px 8px; font-family:inherit; font-size:0.72rem; color:#f5f0e8; min-width:0; }
+.wst { font-size:0.72rem; white-space:nowrap; font-weight:bold; }
+main { padding:16px; display:flex; flex-direction:column; gap:16px; }
+.upload { border:2px dashed var(--brd); background:var(--sur); border-radius:10px; padding:28px 16px; text-align:center; position:relative; cursor:pointer; }
+.upload:active { border-color:var(--red); }
+.upload input { position:absolute; inset:0; opacity:0; width:100%; height:100%; cursor:pointer; }
+.upload .ic { font-size:2rem; display:block; margin-bottom:8px; }
+.upload p { font-size:0.82rem; color:var(--mut); line-height:1.6; }
+.upload strong { color:var(--ink); }
+.scan { display:none; background:var(--ink); color:var(--bg); border-radius:10px; padding:20px; text-align:center; font-size:0.82rem; }
+.scan.on { display:block; }
+.cards { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.card { background:var(--sur); border:1.5px solid var(--brd); border-radius:8px; padding:14px 12px; }
+.card.f { border-left:4px solid var(--grn); }
+.card.fu { border-left:4px solid var(--red); }
+.cl { font-size:0.6rem; letter-spacing:0.08em; text-transform:uppercase; color:var(--mut); margin-bottom:6px; }
+.ca { font-family:Georgia,serif; font-size:1.3rem; font-weight:700; }
+.card.f .ca { color:var(--grn); }
+.card.fu .ca { color:var(--red); }
+.cc { font-size:0.6rem; color:var(--mut); margin-top:3px; }
+.exprow { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.bexp { border:none; border-radius:6px; padding:11px 8px; font-family:inherit; font-size:0.72rem; cursor:pointer; font-weight:bold; }
+.bexp.f { background:var(--grn); color:white; }
+.bexp.fu { background:var(--red); color:white; }
+.bexp:disabled { opacity:0.4; cursor:not-allowed; }
+.etit { font-family:Georgia,serif; font-weight:300; font-size:0.95rem; margin-bottom:8px; }
+.empty { text-align:center; padding:32px 14px; color:var(--mut); font-size:0.78rem; line-height:1.8; border:1.5px solid var(--brd); border-radius:8px; background:var(--sur); }
+.dh { display:flex; justify-content:space-between; font-size:0.62rem; letter-spacing:0.08em; text-transform:uppercase; color:var(--mut); padding:7px 0 4px; border-bottom:1px solid var(--brd); margin-bottom:4px; }
+.er { display:flex; align-items:center; gap:8px; padding:10px 10px; background:var(--sur); border:1px solid var(--brd); border-radius:6px; margin-bottom:3px; }
+.et { width:34px; height:34px; object-fit:cover; border-radius:4px; border:1px solid var(--brd); flex-shrink:0; cursor:pointer; }
+.etp { width:34px; height:34px; border-radius:4px; border:1px solid var(--brd); background:var(--bg); display:flex; align-items:center; justify-content:center; font-size:1rem; flex-shrink:0; }
+.pill { font-size:0.56rem; letter-spacing:0.06em; text-transform:uppercase; padding:2px 5px; border-radius:2px; font-weight:700; white-space:nowrap; flex-shrink:0; }
+.pill.v { background:#e8f4ec; color:var(--grn); }
+.pill.b { background:#fdf0e8; color:var(--red); }
+.ed { flex:1; font-size:0.78rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; }
+.ea { font-family:Georgia,serif; font-size:0.9rem; font-weight:700; white-space:nowrap; }
+.edel { background:none; border:none; color:#ccc; font-size:1.2rem; padding:2px 3px; cursor:pointer; line-height:1; flex-shrink:0; }
+.ov { display:none; position:fixed; inset:0; background:rgba(26,22,18,0.8); z-index:100; align-items:flex-end; justify-content:center; }
+.ov.on { display:flex; }
+.modal { background:var(--sur); border-radius:18px 18px 0 0; width:100%; max-height:92vh; overflow-y:auto; padding:14px 18px 40px; animation:su 0.25s ease; }
+@keyframes su { from{transform:translateY(100%)} to{transform:translateY(0)} }
+.mh { width:36px; height:4px; background:var(--brd); border-radius:2px; margin:0 auto 14px; }
+.modal h2 { font-family:Georgia,serif; font-weight:300; font-size:1.1rem; margin-bottom:12px; padding-bottom:10px; border-bottom:1px solid var(--brd); }
+.modal label { display:block; font-size:0.62rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--mut); margin-bottom:4px; margin-top:12px; }
+.modal input,.modal select { width:100%; background:var(--bg); border:1.5px solid var(--brd); border-radius:8px; padding:10px 11px; font-family:inherit; font-size:0.88rem; color:var(--ink); -webkit-appearance:none; }
+.modal input:focus,.modal select:focus { outline:none; border-color:var(--red); }
+.mprev { width:100%; max-height:140px; object-fit:contain; border-radius:8px; border:1px solid var(--brd); background:var(--bg); margin-bottom:4px; }
+.err { background:#fdecea; color:var(--red); padding:8px 10px; border-radius:8px; font-size:0.7rem; margin-bottom:10px; line-height:1.5; }
+.ma { display:flex; gap:10px; margin-top:18px; }
+.bp { flex:1; padding:13px; background:var(--ink); color:var(--bg); border:none; border-radius:10px; font-family:inherit; font-size:0.82rem; cursor:pointer; }
+.bs { flex:1; padding:13px; background:transparent; color:var(--mut); border:1.5px solid var(--brd); border-radius:10px; font-family:inherit; font-size:0.82rem; cursor:pointer; }
+.lb { display:none; position:fixed; inset:0; background:rgba(26,22,18,0.95); z-index:200; align-items:center; justify-content:center; }
+.lb.on { display:flex; }
+.lb img { max-width:95vw; max-height:88vh; border-radius:6px; }
+.lbc { position:fixed; top:14px; right:14px; background:rgba(255,255,255,0.15); border:none; color:white; font-size:1.3rem; width:40px; height:40px; border-radius:50%; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+.fn { font-size:0.6rem; color:var(--mut); text-align:center; padding-top:10px; border-top:1px solid var(--brd); }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Bonnen <span class="a">Tracker</span> <span class="v">v14</span></h1>
+    <div class="ml" id="ml"></div>
+  </div>
+  <div style="text-align:right;font-size:0.6rem;letter-spacing:0.08em;text-transform:uppercase;color:#9a9590;line-height:2">AI<br>Scanner</div>
+</header>
+
+<div class="wbar">
+  <label>Gemini Key</label>
+  <input type="password" id="wIn" placeholder="AIza..." oninput="saveW()">
+  <span class="wst" id="wSt"></span>
+</div>
+
+<main>
+  <div class="upload" id="upZone">
+    <input type="file" id="fileIn" accept="image/*" multiple>
+    <span class="ic">📷</span>
+    <p><strong>Bon toevoegen</strong><br>Tik hier om te fotograferen of uploaden</p>
+  </div>
+  <div class="scan" id="scanEl">🔍&nbsp;&nbsp;Bon wordt uitgelezen…</div>
+
+  <div class="cards">
+    <div class="card f"><div class="cl">🥗 Voeding</div><div class="ca" id="fAmt">$0,00</div><div class="cc" id="fCnt">0 bonnen</div></div>
+    <div class="card fu"><div class="cl">⛽ Brandstof</div><div class="ca" id="fuAmt">$0,00</div><div class="cc" id="fuCnt">0 bonnen</div></div>
+  </div>
+
+  <div class="exprow">
+    <button class="bexp f" id="btnF" onclick="doExp('voeding')">↓ PDF Voeding</button>
+    <button class="bexp fu" id="btnFu" onclick="doExp('brandstof')">↓ PDF Brandstof</button>
+  </div>
+
+  <div>
+    <div class="etit">Bonnen deze maand</div>
+    <div id="list"><div class="empty">Nog geen bonnen.<br>Tik hierboven om te beginnen.</div></div>
+  </div>
+
+  <div class="fn">Uitgelezen door Claude AI · Controleer altijd voor export</div>
+</main>
+
+<div class="ov" id="ov">
+  <div class="modal">
+    <div class="mh"></div>
+    <h2>Bon bevestigen</h2>
+    <div class="err" id="errB" style="display:none"></div>
+    <img class="mprev" id="mprev" style="display:none" src="" alt="">
+    <label>Omschrijving</label>
+    <input type="text" id="mDesc" placeholder="bijv. Shell, McDonald's…" autocomplete="off">
+    <label>Bedrag ($)</label>
+    <input type="number" id="mAmt" step="0.01" min="0" placeholder="0.00" inputmode="decimal" style="font-size:1.2rem;font-weight:bold">
+    <label>Datum</label>
+    <input type="date" id="mDate">
+    <label>Categorie</label>
+    <select id="mCat">
+      <option value="voeding">🥗 Voeding</option>
+      <option value="brandstof">⛽ Brandstof</option>
+    </select>
+    <div class="ma">
+      <button class="bs" onclick="closeM()">Annuleren</button>
+      <button class="bp" onclick="saveE()">Opslaan</button>
+    </div>
+  </div>
+</div>
+
+<div class="lb" id="lb" onclick="closeLb()">
+  <button class="lbc">×</button>
+  <img id="lbImg" src="" alt="">
+</div>
+
+<script>
+const SKEY = 'bonnen_v3';
+const GKEY = 'gemini_key';
+let entries = [];
+let pending = null;
+
+window.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('ml').textContent = new Date().toLocaleDateString('nl-NL', {month:'long',year:'numeric'});
+  try { entries = JSON.parse(localStorage.getItem(SKEY) || '[]'); } catch {}
+  const k = localStorage.getItem(GKEY) || '';
+  document.getElementById('wIn').value = k;
+  setWSt(k);
+  document.getElementById('mDate').value = td();
+  render();
+});
+
+function saveW() {
+  const v = document.getElementById('wIn').value.trim();
+  localStorage.setItem(GKEY, v);
+  setWSt(v);
+}
+function setWSt(v) {
+  const el = document.getElementById('wSt');
+  if (v.length > 10) { el.textContent='✓'; el.style.color='#2a6b4a'; }
+  else { el.textContent=v?'✗':''; el.style.color='#c8401a'; }
+}
+
+document.getElementById('fileIn').addEventListener('change', e => handleF(e.target.files));
+
+async function handleF(files) {
+  const k = localStorage.getItem(GKEY) || '';
+  if (!k) { alert('Vul eerst je Gemini API-sleutel in bovenaan.'); return; }
+  for (const f of Array.from(files)) {
+    if (!f.type.startsWith('image/')) continue;
+    await procF(f, k);
+  }
+  document.getElementById('fileIn').value = '';
+}
+
+async function procF(file, k) {
+  setScan(true);
+  try {
+    const dataUrl = await compress(file);
+    pending = { dataUrl, mimeType: 'image/jpeg' };
+    const result = await callGemini(dataUrl.split(',')[1], 'image/jpeg', k);
+    setScan(false);
+    openM(result);
+  } catch(err) {
+    setScan(false);
+    openM({ error: err.message });
+  }
+}
+
+function compress(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const MAX = 1200;
+        let w = img.width, h = img.height;
+        if (w > MAX || h > MAX) {
+          if (w > h) { h = Math.round(h*MAX/w); w = MAX; }
+          else { w = Math.round(w*MAX/h); h = MAX; }
+        }
+        const c = document.createElement('canvas');
+        c.width = w; c.height = h;
+        c.getContext('2d').drawImage(img, 0, 0, w, h);
+        res(c.toDataURL('image/jpeg', 0.85));
+      };
+      img.onerror = rej;
+      img.src = r.result;
+    };
+    r.onerror = rej;
+    r.readAsDataURL(file);
+  });
+}
+
+async function callGemini(base64, mimeType, apiKey) {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+  let resp;
+  try {
+    resp = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{
+          parts: [
+            { inline_data: { mime_type: mimeType, data: base64 } },
+            { text: 'Bekijk deze kassabon zorgvuldig. Geef ALLEEN dit JSON object terug, niets anders:\n{"desc":"naam van zaak","amount":18.29,"date":"2026-04-16","cat":"voeding"}\n\n- desc: naam van de winkel of zaak\n- amount: het totaalbedrag als getal (zoek naar Amount Due, Total, Grand Total of Auth Amt)\n- date: datum op de bon in YYYY-MM-DD formaat\n- cat: "voeding" voor eten/drinken/restaurant/koffie, "brandstof" voor benzine/diesel/tanken' }
+          ]
+        }],
+        generationConfig: { temperature: 0, maxOutputTokens: 300 }
+      })
+    });
+  } catch(fetchErr) {
+    throw new Error('Netwerkfout: ' + fetchErr.message);
+  }
+  if (!resp.ok) {
+    const txt = await resp.text().catch(() => '');
+    throw new Error('HTTP ' + resp.status + ': ' + txt.slice(0, 200));
+  }
+  const data = await resp.json();
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  const match = text.match(/\{[\s\S]*?\}/);
+  if (!match) throw new Error('Geen JSON. Gemini zei: ' + text.slice(0, 150));
+  const parsed = JSON.parse(match[0]);
+  if (typeof parsed.amount !== 'number' || isNaN(parsed.amount)) throw new Error('Bedrag niet herkend: ' + JSON.stringify(parsed));
+  return parsed;
+}
+
+function openM(pre = {}) {
+  document.getElementById('mDesc').value = pre.desc || '';
+  document.getElementById('mAmt').value = pre.amount != null ? pre.amount : '';
+  document.getElementById('mDate').value = pre.date || td();
+  document.getElementById('mCat').value = pre.cat || 'voeding';
+  const err = document.getElementById('errB');
+  if (pre.error) { err.textContent = '⚠ ' + pre.error; err.style.display = 'block'; }
+  else err.style.display = 'none';
+  const prev = document.getElementById('mprev');
+  if (pending?.dataUrl) { prev.src = pending.dataUrl; prev.style.display = 'block'; }
+  else prev.style.display = 'none';
+  document.getElementById('ov').classList.add('on');
+  setTimeout(() => document.getElementById('mAmt').focus(), 350);
+}
+
+function closeM() { document.getElementById('ov').classList.remove('on'); pending = null; }
+
+function saveE() {
+  const desc = document.getElementById('mDesc').value.trim();
+  const amount = parseFloat(document.getElementById('mAmt').value);
+  const date = document.getElementById('mDate').value;
+  const cat = document.getElementById('mCat').value;
+  if (!desc || isNaN(amount) || !date) { alert('Vul alle velden in.'); return; }
+  entries.push({ id: Date.now(), desc, amount, date, cat, imageData: pending?.dataUrl || null, imageMime: 'image/jpeg' });
+  entries.sort((a, b) => b.date.localeCompare(a.date));
+  sv(); closeM(); render();
+}
+
+function delE(id) {
+  if (!confirm('Bon verwijderen?')) return;
+  entries = entries.filter(e => e.id !== id);
+  sv(); render();
+}
+
+function openLb(src) { document.getElementById('lbImg').src = src; document.getElementById('lb').classList.add('on'); }
+function closeLb() { document.getElementById('lb').classList.remove('on'); }
+
+function render() {
+  const food = entries.filter(e => e.cat === 'voeding');
+  const fuel = entries.filter(e => e.cat === 'brandstof');
+  const fS = food.reduce((a, e) => a + e.amount, 0);
+  const fuS = fuel.reduce((a, e) => a + e.amount, 0);
+  document.getElementById('fAmt').textContent = fmt(fS);
+  document.getElementById('fuAmt').textContent = fmt(fuS);
+  document.getElementById('fCnt').textContent = food.length + ' bonnen';
+  document.getElementById('fuCnt').textContent = fuel.length + ' bonnen';
+  document.getElementById('btnF').disabled = food.length === 0;
+  document.getElementById('btnFu').disabled = fuel.length === 0;
+  const list = document.getElementById('list');
+  if (!entries.length) { list.innerHTML = '<div class="empty">Nog geen bonnen.<br>Tik hierboven om te beginnen.</div>'; return; }
+  const grp = {};
+  entries.forEach(e => (grp[e.date] = grp[e.date] || []).push(e));
+  list.innerHTML = Object.entries(grp).map(([date, items]) => {
+    const dT = items.reduce((a, e) => a + e.amount, 0);
+    const dL = new Date(date + 'T12:00:00').toLocaleDateString('nl-NL', {weekday:'long',day:'numeric',month:'long'});
+    return `<div style="margin-bottom:8px">
+      <div class="dh"><span>${dL}</span><span>${fmt(dT)}</span></div>
+      ${items.map(e => `<div class="er">
+        ${e.imageData ? `<img class="et" src="${e.imageData}" onclick="openLb('${e.imageData}')" alt="">` : `<div class="etp">🧾</div>`}
+        <span class="pill ${e.cat==='voeding'?'v':'b'}">${e.cat==='voeding'?'Voeding':'Brandstof'}</span>
+        <span class="ed">${esc(e.desc)}</span>
+        <span class="ea">${fmt(e.amount)}</span>
+        <button class="edel" onclick="delE(${e.id})">×</button>
+      </div>`).join('')}
+    </div>`;
+  }).join('');
+}
+
+async function doExp(cat) {
+  const filtered = entries.filter(e => e.cat === cat);
+  if (!filtered.length) { alert('Geen bonnen in deze categorie.'); return; }
+  const btn = document.getElementById(cat === 'voeding' ? 'btnF' : 'btnFu');
+  const orig = btn.textContent;
+  btn.textContent = '⏳'; btn.disabled = true;
+  try {
+    let att = 0;
+    while (!window.jspdf && att++ < 30) await new Promise(r => setTimeout(r, 200));
+    if (!window.jspdf) throw new Error('PDF library niet geladen — herlaad de pagina');
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit:'mm', format:'a4' });
+    const W = 210, M = 20, now = new Date();
+    const mn = now.toLocaleDateString('nl-NL', {month:'long',year:'numeric'});
+    const isF = cat === 'voeding';
+    const cc = isF ? [42,107,74] : [200,64,26];
+    const total = filtered.reduce((a, e) => a + e.amount, 0);
+
+    // Header
+    doc.setFillColor(26,22,18); doc.rect(0,0,W,28,'F');
+    doc.setFont('helvetica','bold'); doc.setFontSize(16); doc.setTextColor(245,240,232);
+    doc.text('Bonnen Tracker — ' + (isF ? 'Voeding' : 'Brandstof'), M, 13);
+    doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(154,149,144);
+    doc.text(mn.toUpperCase(), M, 21);
+    doc.setFontSize(8); doc.text('Gegenereerd: ' + now.toLocaleDateString('nl-NL'), W-M, 21, {align:'right'});
+    let y = 38;
+
+    // Totaalkaart
+    doc.setFillColor(250,248,244); doc.roundedRect(M,y,W-M*2,28,2,2,'F');
+    doc.setFillColor(...cc); doc.rect(M,y,4,28,'F');
+    doc.setFontSize(8); doc.setTextColor(120,115,110); doc.setFont('helvetica','normal');
+    doc.text(((isF?'Voeding':'Brandstof') + ' — ' + filtered.length + ' bonnen').toUpperCase(), M+10, y+9);
+    doc.setFont('helvetica','bold'); doc.setFontSize(18); doc.setTextColor(...cc);
+    doc.text('$' + total.toFixed(2).replace('.',','), M+10, y+22);
+    y += 36;
+
+    // Lijst per datum
+    const grp = {};
+    filtered.forEach(e => (grp[e.date] = grp[e.date] || []).push(e));
+    for (const [date, items] of Object.entries(grp)) {
+      if (y > 265) { doc.addPage(); y = 20; }
+      const dl = new Date(date+'T12:00:00').toLocaleDateString('nl-NL',{weekday:'long',day:'numeric',month:'long'});
+      const dt = items.reduce((a,e) => a+e.amount, 0);
+      doc.setFillColor(240,236,230); doc.rect(M,y,W-M*2,7,'F');
+      doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(100,95,90);
+      doc.text(dl.toUpperCase(), M+3, y+4.8);
+      doc.text('$'+dt.toFixed(2).replace('.',','), W-M-3, y+4.8, {align:'right'});
+      y += 9;
+      for (const e of items) {
+        if (y > 272) { doc.addPage(); y = 20; }
+        doc.setFillColor(255,253,247); doc.rect(M,y,W-M*2,8,'F');
+        doc.setDrawColor(212,207,197); doc.setLineWidth(0.2); doc.rect(M,y,W-M*2,8);
+        doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(26,22,18);
+        doc.text(e.desc, M+5, y+5.2);
+        doc.setFont('helvetica','bold'); doc.setFontSize(9);
+        doc.text('$'+e.amount.toFixed(2).replace('.',','), W-M-3, y+5.2, {align:'right'});
+        y += 9;
+      }
+      y += 4;
+    }
+    doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(180,175,170);
+    doc.text('Bonnen Tracker · ' + now.toLocaleDateString('nl-NL'), W/2, 290, {align:'center'});
+
+    // Fotopagina's
+    const wp = filtered.filter(e => e.imageData);
+    if (wp.length) {
+      const iW = (W-M*2-8)/2, iH = 100;
+      for (let i = 0; i < wp.length; i += 2) {
+        doc.addPage();
+        doc.setFillColor(26,22,18); doc.rect(0,0,W,16,'F');
+        doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(245,240,232);
+        doc.text((isF?'VOEDING':'BRANDSTOF') + " — FOTO'S", M, 10.5);
+        let py = 24;
+        for (let col = 0; col < 2; col++) {
+          const e = wp[i+col]; if (!e) continue;
+          const px = M + col*(iW+8);
+          doc.setFillColor(...cc); doc.rect(px,py,iW,8,'F');
+          doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(255,255,255);
+          doc.text(e.desc, px+3, py+5.3);
+          doc.text('$'+e.amount.toFixed(2).replace('.',','), px+iW-3, py+5.3, {align:'right'});
+          doc.setFillColor(240,236,230); doc.rect(px,py+8,iW,6,'F');
+          doc.setFontSize(7); doc.setTextColor(100,95,90);
+          doc.text(new Date(e.date+'T12:00:00').toLocaleDateString('nl-NL',{day:'numeric',month:'short',year:'numeric'}).toUpperCase(), px+3, py+12.3);
+          await new Promise(res => {
+            const img = new Image();
+            img.onload = () => {
+              const a = img.width/img.height; let dw=iW,dh=iH;
+              if (a > iW/iH) dh=iW/a; else dw=iH*a;
+              const dx = px+(iW-dw)/2;
+              doc.setFillColor(248,246,242); doc.rect(px,py+14,iW,iH,'F');
+              try { doc.addImage(e.imageData,'JPEG',dx,py+14,dw,dh); } catch {}
+              doc.setDrawColor(212,207,197); doc.setLineWidth(0.3); doc.rect(px,py+14,iW,iH);
+              res();
+            };
+            img.onerror = res; img.src = e.imageData;
+          });
+        }
+        doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(180,175,170);
+        doc.text('Bonnen Tracker · ' + now.toLocaleDateString('nl-NL'), W/2, 290, {align:'center'});
+      }
+    }
+    doc.save('bonnen_' + cat + '_' + now.toISOString().slice(0,7) + '.pdf');
+  } catch(err) {
+    alert('PDF fout: ' + err.message);
+  } finally {
+    btn.textContent = orig;
+    btn.disabled = filtered.length === 0;
+  }
+}
+
+function fmt(n) { return '$' + Number(n).toFixed(2).replace('.',','); }
+function td() { return new Date().toISOString().split('T')[0]; }
+function sv() { try { localStorage.setItem(SKEY, JSON.stringify(entries)); } catch {} }
+function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function setScan(v) { document.getElementById('scanEl').classList.toggle('on',v); document.getElementById('upZone').style.display=v?'none':''; }
+document.getElementById('ov').addEventListener('click', e => { if (e.target === document.getElementById('ov')) closeM(); });
+</script>
+</body>
+</html>
